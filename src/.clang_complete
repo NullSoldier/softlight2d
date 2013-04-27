@@ -1,0 +1,3 @@
+-include ./include
+-include ../include
+-include ./include/GL/glfw.h
