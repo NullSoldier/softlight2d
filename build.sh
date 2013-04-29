@@ -1,6 +1,7 @@
 #!/bin/bash
 mkdir -p build
 clang++ src/*.cpp -o build/light \
+	-g \
 	-std=c++11 \
 	-framework Cocoa \
 	-framework IOKit \

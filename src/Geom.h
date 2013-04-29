@@ -7,10 +7,15 @@
 class Geom
 {
 public:
+	float r;
+	float g;
+	float b;
+	float a;
+
+	Geom (float r, float g, float b, float a); 
 	void AddVertex (float x, float y, float z);
 	int VertexCount() const;
 	std::tuple<float,float,float> GetVertex (int index) const;
-
 private:
 	std::vector<float> vertices;
 };

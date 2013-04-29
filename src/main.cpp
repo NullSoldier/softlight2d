@@ -4,10 +4,11 @@
 #include <string>
 #include <iostream>
 
-void render();
-void clearFrameBufferAlpha();
+void draw();
+void clearAlpha();
 void buildWorld();
 void drawGeometry();
+void drawLight (Light light);
 
 std::vector<Geom> geom;
 std::vector<Light> lights;
@@ -28,15 +29,13 @@ int main (int argc, const char* argv[])
 	glfwSetWindowTitle (title.c_str());
 	
 	buildWorld();
-
 	while (glfwGetWindowParam (GLFW_OPENED)) {
-		render();
+		draw();
 	}
-
 	return 0;
 }
 
-void render() 
+void draw() 
 {
 	glDepthMask (GL_TRUE);
 	glClearDepth (1);
@@ -53,32 +52,60 @@ void render()
 	glLoadIdentity();
 	
 	glDisable (GL_CULL_FACE);
-	
+
+	// Fill the depth buffer	
+	glDepthMask (GL_TRUE);
+	glEnable (GL_DEPTH_TEST);
+	glDepthFunc (GL_LEQUAL);
+	glColorMask (GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	drawGeometry();
+	glDepthMask (GL_FALSE);
+
 	for (auto iter = lights.begin(); iter != lights.end(); iter++)
 	{
-		// fill z buffer with geom
-
-		//clearFrameBufferAlpha();	
-		//iter->DrawAlpha();
+		clearAlpha();
+		drawLight (*iter);
+		glColorMask (GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 		drawGeometry();
 	}	
 	
 	glfwSwapBuffers();
 }
 
-void clearFrameBufferAlpha()
+void drawLight (Light light)
 {
+	glEnable (GL_DEPTH_TEST);
+	glDepthFunc (GL_LEQUAL);
+	glDisable (GL_BLEND);
+	glColorMask (GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+	light.DrawAlpha();
+}
+
+void clearAlpha()
+{
+	glDisable (GL_BLEND);
+	glDisable (GL_DEPTH_TEST);
+	glColorMask (GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+	glBegin (GL_QUADS);
+	glColor4f (0, 0, 0, 1);
+	glVertex3f (-1, -1, 1);
+	glVertex3f (1, -1, 1);
+	glVertex3f (1, 1, 1);
+	glVertex3f (-1, 1, 1);
+	glEnd();	
 }
 
 void drawGeometry()
 {
+	glEnable (GL_DEPTH_TEST);
+	glDepthFunc (GL_LEQUAL);
 	glEnable (GL_BLEND);
 	glBlendFunc (GL_DST_ALPHA, GL_ONE);
 
-	std::cout << "Drawing geometry" << std::endl;
 	for (auto iter = geom.begin(); iter != geom.end(); iter++) {
 		std::cout << "Drawing geometry with size " << iter->VertexCount() << std::endl;
 		glBegin (GL_POLYGON);
+		glColor4f (iter->r, iter->g, iter->b, iter->a);
 		for (int i=0; i<iter->VertexCount(); i++) {
 			auto vert = iter->GetVertex (i);
 			glVertex3f (
@@ -86,6 +113,7 @@ void drawGeometry()
 				std::get<1> (vert),
 				std::get<2> (vert)
 			);
+			//std::cout <<  std::get<0> (vert) << ' ' << std::get<1> (vert) << ' ' <<  std::get<2> (vert) << '\n';
 		}
 		glEnd();
 	}
@@ -93,14 +121,20 @@ void drawGeometry()
 
 void buildWorld()
 {
-	auto box = Geom();
-	box.AddVertex (20, 20, 0);
-	box.AddVertex (40, 20, 0);
-	box.AddVertex (40, 40, 0);
-	box.AddVertex (20, 40, 0);
+	Geom box (0, 0.5, 1, 1);
+	box.AddVertex (0.3, 0.3, 0.8);
+	box.AddVertex (0.7, 0.3, 0.8);
+	box.AddVertex (0.7, 0.7, 0.8);
+	box.AddVertex (0.3, 0.7, 0.8);
 	geom.push_back (box);
+		
+	Geom floor (1, 1, 1, 1);
+	floor.AddVertex (-1, -1, 1);
+	floor.AddVertex (1, -1, 1);
+	floor.AddVertex (1, 1, 1);
+	floor.AddVertex (-1, 1, 1);
+	geom.push_back (floor);
 
-	auto light = Light (0, 0, 100, 0.5);
+	Light light (0, 0, 0.5, 0.5);
 	lights.push_back (light);
-
 }
