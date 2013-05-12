@@ -11,6 +11,7 @@ public:
 	float g;
 	float b;
 	float a;
+	bool castShadows;
 
 	Geom (float r, float g, float b, float a); 
 	void AddVertex (float x, float y, float z);
