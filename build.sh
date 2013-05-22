@@ -1,12 +1,2 @@
 #!/bin/bash
-mkdir -p build
-clang++ src/*.cpp -o build/light \
-	-g \
-	-std=c++11 \
-	-framework Cocoa \
-	-framework IOKit \
-	-framework OpenGL \
-	-stdlib=libc++ \
-	-L lib \
-	-l glfw \
-	-I include
+vendor/gyp/gyp --depth=build && open light2d.xcodeproj
