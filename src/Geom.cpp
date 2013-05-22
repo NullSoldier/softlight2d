@@ -1,34 +1,46 @@
+#include "Vector.h"
 #include "Geom.h"
+#include "GL/glfw.h"
+
+#include <memory>
 #include <iostream>
 
-Geom::Geom (float r, float g, float b, float a) :
-	r (r),
-	g (g),
-	b (b),
-	a (a)	
+Geom::Geom (float r, float g, float b, float a)
+    : color (r, g, b, a)
 {
 }
 
 void Geom::AddVertex (float x, float y, float z)
 {
-	vertices.push_back (x);
-	vertices.push_back (y);
-	vertices.push_back (z);
+    verts.push_back (Vector3 (x, y, z));
 }
 
-std::tuple<float,float,float> Geom::GetVertex (int index) const
+void Geom::Draw (int lastStartEdge, int lastEndEdge) const
 {
-	//std::cout << "Getting vertex with index " << index << "\n";
-	int start = index*3;
-	//std::cout << "Vertex index is " << start << "\n";
-	return std::tuple<float,float,float> (
-		vertices[start],
-		vertices[start+1],
-		vertices[start+2]
-	);
-}
-
-int Geom::VertexCount() const
-{
-	return vertices.size() / 3;
+    glBegin (GL_POLYGON);
+    
+    for (int i=0; i < verts.size(); i++) {
+        Vector3 vert = verts[i];
+        
+        float vertR =
+            castShadows && lastStartEdge == i ? 1 :
+            castShadows && lastEndEdge ==   i ? 0 :
+            color.X;
+        float vertG =
+            castShadows && lastStartEdge == i ? 0 :
+            castShadows && lastEndEdge ==   i ? 1 :
+            color.Y;
+        float vertB =
+            castShadows && lastStartEdge == i ? 0 :
+            castShadows && lastEndEdge ==   i ? 0 :
+            color.Z;
+        
+        glColor4f (vertR, vertG, vertB, 1);
+        glVertex3f (
+            vert.X,
+            vert.Y,
+            vert.Z
+        );
+    }
+    glEnd();
 }

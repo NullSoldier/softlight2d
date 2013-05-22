@@ -14,8 +14,12 @@ Light::Light (float x, float y, float z, float r, float intensity) :
 
 void Light::DrawAlpha() const
 {
+    glEnable (GL_DEPTH_TEST);
+	glDepthFunc (GL_LEQUAL);
+	glDisable (GL_BLEND);
+	glColorMask (GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+    
 	glBegin (GL_TRIANGLE_FAN);
-	
 	glColor4f (0.0f, 0.0f, 0.0f, Intensity);
 	glVertex3f (X, Y, Z);
 
