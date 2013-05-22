@@ -1,4 +1,6 @@
+build.xcodeproj/
+build/
 /obj/
 /bin/
 .DS_Store
-build/
+light2d.target.mk
