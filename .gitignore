@@ -1,6 +1,7 @@
 /build/
 /obj/
 /bin/
+/bin-xcode/
 light2d.target.mk
 light2d.xcodeproj/
 .DS_Store
