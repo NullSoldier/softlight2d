@@ -206,14 +206,13 @@ void drawShadows (const Light& light)
 
         auto finRight = findShadowFin (light, g, startIndex);
         auto finLeft = findShadowFin (light, g, endIndex);
-        
-        const int depth = g.verts[startIndex].Z;
-        
 
         // #SHADOW FIN DRAWING MODE
         glEnable (GL_TEXTURE_2D);
         glEnable (GL_DEPTH_TEST);
         glColorMask (GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+        
+        const int depth = g.verts[startIndex].Z;
         
         auto triRight = genFinTriangle (*finRight, 100.0);
         glBindTexture (GL_TEXTURE_2D, shadowTexID);
@@ -233,9 +232,9 @@ void drawShadows (const Light& light)
         glColor4f (1, 1, 1, 1);
         glTexCoord2f (0, 0);
         glVertex3f (triLeft[0].X, triLeft[0].Y, depth);
-        glTexCoord2f (1, 1);
-        glVertex3f (triLeft[1].X, triLeft[1].Y, depth);
         glTexCoord2f (0, 1);
+        glVertex3f (triLeft[1].X, triLeft[1].Y, depth);
+        glTexCoord2f (1, 1);
         glVertex3f (triLeft[2].X, triLeft[2].Y, depth);
         glEnd();
         
