@@ -25,7 +25,6 @@ std::vector<Vector2> genFinTriangle (const ShadowFin& fin, const float scale);
 
 void draw();
 void drawGeometry();
-void drawLight (const Light& light);
 void drawShadows (const Light& light);
 
 std::vector<Geom> geom;
@@ -126,9 +125,9 @@ void draw()
 	drawGeometry();
 	glDepthMask (GL_FALSE);
 
-	for (const std::unique_ptr<Light> &light : lights) {
+	for (const auto &light : lights) {
 		clearAlpha();
-		drawLight (*light);
+        light->DrawAlpha();
 		drawShadows(*light);
 		drawGeometry();
 	}
@@ -136,16 +135,12 @@ void draw()
 	glfwSwapBuffers();
 }
 
-void drawLight (const Light& light)
-{
-	light.DrawAlpha();
-}
-
 void clearAlpha()
 {
 	glDisable (GL_BLEND);
 	glDisable (GL_DEPTH_TEST);
 	glColorMask (GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+    
 	glBegin (GL_QUADS);
 	glColor4f (0, 0, 0, 0);
 	glVertex3f (-1, -1, 1);
@@ -157,11 +152,12 @@ void clearAlpha()
 
 void drawGeometry()
 {
-	glColorMask (GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDisable (GL_TEXTURE_2D);
 	glEnable (GL_DEPTH_TEST);
-	glDepthFunc (GL_LEQUAL);
+    glDepthFunc (GL_LEQUAL);
 	glEnable (GL_BLEND);
 	glBlendFunc (GL_DST_ALPHA, GL_ONE);
+    glColorMask (GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 	for (const Geom &g : geom) {
         g.Draw (lastStartEdge, lastEndEdge);
@@ -208,54 +204,70 @@ void drawShadows (const Light& light)
             //std::cout << "Last " << (i-1) << ": " << last << "\n";
 		}
 
-        auto fin = findShadowFin (light, g, startIndex);
-        std::cout << "1iinner " << fin->Inner << "\n";
-        auto tri = genFinTriangle (*fin, 100.0);
+        auto finRight = findShadowFin (light, g, startIndex);
+        auto finLeft = findShadowFin (light, g, endIndex);
         
-        std::cout << "iinner " << fin->Inner << "\n";
+        const int depth = g.verts[startIndex].Z;
         
 
-        // Draw first shadow fin triangle
-        glBindTexture (GL_TEXTURE_2D, shadowTexID);
-        glEnable (GL_DEPTH_TEST);
+        // #SHADOW FIN DRAWING MODE
         glEnable (GL_TEXTURE_2D);
-        glColorMask (GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
+        glEnable (GL_DEPTH_TEST);
+        glColorMask (GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+        
+        auto triRight = genFinTriangle (*finRight, 100.0);
+        glBindTexture (GL_TEXTURE_2D, shadowTexID);
         glBegin (GL_TRIANGLES);
         glColor4f (1, 1, 1, 1);
         glTexCoord2f (0, 0);
-        glVertex3f (tri[0].X, tri[0].Y, g.verts[startIndex].Z);
+        glVertex3f (triRight[0].X, triRight[0].Y, depth);
         glTexCoord2f (0, 1);
-        glVertex3f (tri[1].X, tri[1].Y, g.verts[startIndex].Z);
+        glVertex3f (triRight[1].X, triRight[1].Y, depth);
         glTexCoord2f (1, 1);
-        glVertex3f (tri[2].X, tri[2].Y, g.verts[startIndex].Z);
+        glVertex3f (triRight[2].X, triRight[2].Y, depth);
         glEnd();
-    
+        
+        auto triLeft = genFinTriangle (*finLeft, 100.0);
+        glBindTexture (GL_TEXTURE_2D, shadowTexID);
+        glBegin (GL_TRIANGLES);
+        glColor4f (1, 1, 1, 1);
+        glTexCoord2f (0, 0);
+        glVertex3f (triLeft[0].X, triLeft[0].Y, depth);
+        glTexCoord2f (1, 1);
+        glVertex3f (triLeft[1].X, triLeft[1].Y, depth);
+        glTexCoord2f (0, 1);
+        glVertex3f (triLeft[2].X, triLeft[2].Y, depth);
+        glEnd();
+        
         //continue;
         
-        // Start drawing the shadow geometry
+        // #SHADOW GEOM DRAWING MODE
         glDisable (GL_TEXTURE_2D);
 		glEnable (GL_DEPTH_TEST);
 		glColorMask (GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
-		glBegin (GL_TRIANGLE_STRIP);
+		
+        glBegin (GL_TRIANGLE_STRIP);
 		glColor4f (0, 0, 0, 0);
         
         const float SCALE = 100;
         int i = startIndex;
-        
         while (true) {
             Vector3 vert = g.verts[i];
             glVertex3f (vert.X, vert.Y, vert.Z);
 
             if (i == startIndex) {
-                std::cout << "Drawing index " << i << " = " << fin->Inner << "\n";
                 glVertex3f (
-                    vert.X + (fin->Center.X * SCALE),
-                    vert.Y + (fin->Center.Y * SCALE),
+                    vert.X + (finRight->Center.X * SCALE),
+                    vert.Y + (finRight->Center.Y * SCALE),
+                    vert.Z
+                );
+            } else if (i == endIndex) {
+                glVertex3f (
+                    vert.X + (finLeft->Center.X * SCALE),
+                    vert.Y + (finLeft->Center.Y * SCALE),
                     vert.Z
                 );
             } else {
-                std::cout << "Drawing index " << i << " as default\n";
                 Vector2 v (vert.X - light.X, vert.Y - light.Y);
                 v.Normalize();
                 glVertex3f (
