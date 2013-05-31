@@ -32,8 +32,8 @@ std::vector<std::unique_ptr<Light>> lights;
 int lastStartEdge = -1;
 int lastEndEdge = -1;
 int shadowTexID = -1;
-
-float camx=0.61, camy=0.11;
+//float camx=0.61, camy=0.11;
+float camx=0, camy=0;
 Light *plight;
 
 int main (int argc, const char* argv[])
@@ -41,12 +41,12 @@ int main (int argc, const char* argv[])
     if (init() != 0)
         return;
    
-   shadowTexID = SOIL_load_OGL_texture (
-	   "texture.png",
-	   SOIL_LOAD_AUTO,
-	   SOIL_CREATE_NEW_ID,
-	   SOIL_FLAG_MIPMAPS
-	); 
+    shadowTexID = SOIL_load_OGL_texture (
+       "texture.png",
+       SOIL_LOAD_AUTO,
+       SOIL_CREATE_NEW_ID,
+       SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y
+    ); 
 	buildWorld();
     
 	while (glfwGetWindowParam (GLFW_OPENED)) {
@@ -92,26 +92,28 @@ void update (float dt)
     plight->X = camx;
     plight->Y = camy;
     
-    //std::cout << "CAM x=" << camx << ", y=" << camy << "\n";
+    std::cout << "CAM x=" << camx << ", y=" << camy << "\n";
 }
 
 void draw()
 {
+    // Clear depth buffer
 	glDepthMask (GL_TRUE);
 	glClearDepth (1);
+    
+    // Clear frame buffer
 	glClearColor (0, 0, 0, 0);
 	glClear (GL_COLOR_BUFFER_BIT |
 			GL_DEPTH_BUFFER_BIT |
 			GL_STENCIL_BUFFER_BIT);
 
+    // Set up matrices
 	glMatrixMode (GL_PROJECTION);
 	glLoadIdentity();
     glOrtho (-1.0, 1.0, -1.0, 1.0, 0.0, -1.0);
-    
 	glMatrixMode (GL_MODELVIEW);
 	glLoadIdentity();
     glTranslated(-camx, -camy, 0);
-    
 	glMatrixMode (GL_TEXTURE);
     glLoadIdentity();
 	
@@ -125,10 +127,10 @@ void draw()
 	drawGeometry();
 	glDepthMask (GL_FALSE);
 
-	for (const auto &light : lights) {
+	for (const auto &lightPtr : lights) {
 		clearAlpha();
-        light->DrawAlpha();
-		drawShadows(*light);
+        lightPtr->DrawAlpha();
+		drawShadows(*lightPtr);
 		drawGeometry();
 	}
 	
@@ -143,20 +145,21 @@ void clearAlpha()
     
 	glBegin (GL_QUADS);
 	glColor4f (0, 0, 0, 0);
-	glVertex3f (-1, -1, 1);
-	glVertex3f (1, -1, 1);
-	glVertex3f (1, 1, 1);
-	glVertex3f (-1, 1, 1);
+	glVertex3f (camx-1, camy-1, 1);
+	glVertex3f (camx+1, camy-1, 1);
+	glVertex3f (camx+1, camy+1, 1);
+	glVertex3f (camx-1, camy+1, 1);
 	glEnd();	
 }
 
 void drawGeometry()
 {
     glDisable (GL_TEXTURE_2D);
-	glEnable (GL_DEPTH_TEST);
+    glEnable (GL_DEPTH_TEST);
     glDepthFunc (GL_LEQUAL);
 	glEnable (GL_BLEND);
 	glBlendFunc (GL_DST_ALPHA, GL_ONE);
+    glBlendEquation (GL_ADD);
     glColorMask (GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 	for (const Geom &g : geom) {
@@ -210,33 +213,40 @@ void drawShadows (const Light& light)
         // #SHADOW FIN DRAWING MODE
         glEnable (GL_TEXTURE_2D);
         glEnable (GL_DEPTH_TEST);
+        glEnable (GL_BLEND);
+        glBlendFunc (GL_ONE, GL_ONE);
+        glBlendEquation (GL_FUNC_REVERSE_SUBTRACT);
+        
         glColorMask (GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+        //glColorMask (1, 1, 1, 1);
         
         const int depth = g.verts[startIndex].Z;
-        
-        auto triRight = genFinTriangle (*finRight, 100.0);
         glBindTexture (GL_TEXTURE_2D, shadowTexID);
         glBegin (GL_TRIANGLES);
+        
+        // Right fin
+        auto triRight = genFinTriangle (*finRight, 2);
         glColor4f (1, 1, 1, 1);
         glTexCoord2f (0, 0);
         glVertex3f (triRight[0].X, triRight[0].Y, depth);
         glTexCoord2f (0, 1);
-        glVertex3f (triRight[1].X, triRight[1].Y, depth);
-        glTexCoord2f (1, 1);
         glVertex3f (triRight[2].X, triRight[2].Y, depth);
-        glEnd();
+        glTexCoord2f (1, 1);
+        glVertex3f (triRight[1].X, triRight[1].Y, depth);
         
-        auto triLeft = genFinTriangle (*finLeft, 100.0);
-        glBindTexture (GL_TEXTURE_2D, shadowTexID);
-        glBegin (GL_TRIANGLES);
+        // Left fin
+        auto triLeft = genFinTriangle (*finLeft, 2);
         glColor4f (1, 1, 1, 1);
         glTexCoord2f (0, 0);
         glVertex3f (triLeft[0].X, triLeft[0].Y, depth);
         glTexCoord2f (0, 1);
-        glVertex3f (triLeft[1].X, triLeft[1].Y, depth);
-        glTexCoord2f (1, 1);
         glVertex3f (triLeft[2].X, triLeft[2].Y, depth);
+        glTexCoord2f (1, 1);
+        glVertex3f (triLeft[1].X, triLeft[1].Y, depth);
+        
         glEnd();
+        glBlendEquation (GL_FUNC_ADD);
+        glDisable (GL_BLEND);
         
         //continue;
         
@@ -256,8 +266,8 @@ void drawShadows (const Light& light)
 
             if (i == startIndex) {
                 glVertex3f (
-                    vert.X + (finRight->Center.X * SCALE),
-                    vert.Y + (finRight->Center.Y * SCALE),
+                   vert.X + (finRight->Center.X * SCALE),
+                   vert.Y + (finRight->Center.Y * SCALE),
                     vert.Z
                 );
             } else if (i == endIndex) {
@@ -297,12 +307,16 @@ std::unique_ptr<ShadowFin> findShadowFin (const Light& light, const Geom& geom, 
 
     Vector2 center (root.X - light.X, root.Y - light.Y); // The vector from the edge -> light
     Vector2 perp (center.Y, -center.X); // the perpandicular vector from edge -> light
-    Vector2 toEdge (center.X - centroid.X, center.Y - centroid.Y); // centroid -> edge
+    Vector2 toEdge (root.X - centroid.X, root.Y - centroid.Y); // centroid -> edge
     
-
     center.Normalize();
     perp.Normalize();
     toEdge.Normalize();
+
+    std::cout << "ROOT " << root << "\n";
+    std::cout << "CENTROID " << centroid << "\n";
+    std::cout << "PERP " << perp << "\n";
+    std::cout << "TO EDGE " << toEdge << "\n";
 
     // Reverse the perp if it's the wrong way
     if (Vector2::Dot (toEdge, perp) < 0) {
@@ -313,8 +327,8 @@ std::unique_ptr<ShadowFin> findShadowFin (const Light& light, const Geom& geom, 
         }
     }
     
-    Vector2 inner = center + (perp * -1);
-    Vector2 outer = center + perp;
+    Vector2 inner = center + ((perp * light.PhysicalSize) * -1);
+    Vector2 outer = center + (perp * light.PhysicalSize);
     
     inner.Normalize();
     outer.Normalize();
@@ -370,10 +384,10 @@ bool isEdgeFacingLight (Vector2 curr, Vector2 prev, Light light)
 void buildWorld()
 {
 	Geom box (0, 0.5, 1, 1);
-	box.AddVertex (0.3, 0.3, 0.8);
-	box.AddVertex (0.8, 0.3, 0.8);
-	box.AddVertex (0.8, 0.8, 0.8);
-	box.AddVertex (0.3, 0.8, 0.8);
+	box.AddVertex (0, 0.3, 0.8);
+	box.AddVertex (0.5, 0.3, 0.8);
+	box.AddVertex (0.5, 0.8, 0.8);
+	box.AddVertex (0.0, 0.8, 0.8);
 	box.castShadows = true;
 	geom.push_back (box);
 
@@ -382,7 +396,7 @@ void buildWorld()
 	triangle.AddVertex (0, -0.8, 0.8);
 	triangle.AddVertex (-0.5, -0.5, 0.8);
 	triangle.castShadows = true;
-	//geom.push_back (triangle);
+	geom.push_back (triangle);
     
     Geom box3 (0, 0.5, 1, 1);
     box3.AddVertex(0, 0, 0.8);
@@ -390,7 +404,7 @@ void buildWorld()
     box3.AddVertex(0.1, 0.1, 0.8);
     box3.AddVertex(0, 0.1, 0.8);
     box3.castShadows = true;
-    //geom.push_back (box3);
+    geom.push_back (box3);
 		
 	Geom floor (1, 1, 1, 1);
 	floor.AddVertex (-1, -1, 1);
@@ -398,11 +412,11 @@ void buildWorld()
 	floor.AddVertex (1, 1, 1);
 	floor.AddVertex (-1, 1, 1);
 	floor.castShadows = false;
-	geom.push_back (floor);
+    geom.push_back (floor);
 
-	//Light light (0, 0, 0, 2, 0.5);
-	//lights.push_back (light);
+	Light* light = new Light (0.7, 0.18, 0, 0.5, 0.8, 0.3);
+    //lights.push_back (std::unique_ptr<Light> (light));
     
-    plight = new Light (0, 0, 0, 2, 0.5);
+    plight = new Light (0, 0, 0, /*Range*/2, /*Intensity*/0.6, 0.5/*PhysicalSize*/);
     lights.push_back (std::unique_ptr<Light> (plight));
 }

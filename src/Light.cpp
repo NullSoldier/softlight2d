@@ -3,12 +3,13 @@
 #include <cmath>
 #include <iostream>
 
-Light::Light (float x, float y, float z, float r, float intensity) :
+Light::Light (float x, float y, float z, float range, float intensity, float physicalSize) :
 	X (x),
 	Y (y),
 	Z (z),
-	Radius (r),
-	Intensity (intensity)
+	Range (range),
+	Intensity (intensity),
+    PhysicalSize (physicalSize)
 {
 }
 
@@ -31,12 +32,11 @@ void Light::DrawAlpha() const
 	for (int i=0; i<NUM_OF_DIVISIONS; i++)
 	{
 		float angle = i * STEP;
-		float x = Radius * std::cos (angle) + X;
-		float y = Radius * std::sin (angle) + Y;
+		float x = X + (Range * std::cos (angle));
+		float y = Y + (Range * std::sin (angle));
 		glVertex3f (x, y, this->Z);
-		//std::cout << "Angle: " << angle << ", Vert[" << i << "] " << x << ", " << y << "\n";	
 	}
 	
-	glVertex3f (X + Radius, Y, 1);
+	glVertex3f (X + Range, Y, 1);
 	glEnd();
 }

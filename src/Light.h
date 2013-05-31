@@ -6,10 +6,11 @@ public:
 	float X;
 	float Y;
 	float Z;
-	float Radius;
+    float PhysicalSize;
+	float Range;
 	float Intensity;
 	
-	Light (float x, float y, float z, float r, float intensity);
+	Light (float x, float y, float z, float range, float intensity, float physicalSize);
 	void DrawAlpha() const;
 };
 #endif

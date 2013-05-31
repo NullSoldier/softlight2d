@@ -7,7 +7,8 @@
 
 Geom::Geom (float r, float g, float b, float a) :
     color (r, g, b, a),
-    centroid (0, 0)
+    centroid (0, 0),
+    dirtyCentroid(true)
 {
 }
 
